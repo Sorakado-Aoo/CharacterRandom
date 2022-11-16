@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <title>角色随机</title>
+    <script src="https://unpkg.com/vue@2/dist/vue.js"></script>
+    <link rel="stylesheet" href="https://unpkg.com/element-ui/lib/theme-chalk/index.css">
+    <script src="https://unpkg.com/element-ui/lib/index.js"></script>
+</head>
+<body>
+    <div id="app">
+        <el-tabs v-model="tabName">
+            <el-tab-pane label="随机角色" name="random">
+                <el-checkbox-group v-model="genderFilter" style="margin: 10px 0;">
+                    <el-checkbox-button label="男" key="男">男</el-checkbox-button>
+                    <el-checkbox-button label="女" key="女">女</el-checkbox-button>
+                </el-checkbox-group>
+                <el-checkbox-group v-model="starFilter">
+                    <el-checkbox-button label="4星" key="4星">4星</el-checkbox-button>
+                    <el-checkbox-button label="5星" key="5星">5星</el-checkbox-button>
+                </el-checkbox-group>
+                <el-row>
+                    <p style="display: inline-block; margin-right: 10px;">角色列表</p>
+                    <el-button v-if="model === 'saved'" @click="() => this.model = 'editing'" class="mybtn" type="primary" size="small">
+                        编辑
+                    </el-button>
+                    <el-button v-if="model === 'saved'" @click="reset()" class="mybtn" type="primary" size="small">
+                        重置
+                    </el-button>
+                    <el-button v-if="model === 'editing'" @click="save()" class="mybtn" type="primary" size="small">
+                        保留
+                    </el-button>
+                    <el-button v-if="model === 'editing'" @click="remove()" class="mybtn" type="primary" size="small">
+                        移除
+                    </el-button>
+                </el-row>
+                <div class="char-list">
+                    <img v-for="item in charlist" :src="item.icon" :class="selectedCharMap[item.name] ? ['selected'] : []" @click="selectChar(item.name)" />
+                </div>
+                <div style="margin: 20px 0;">
+                    <el-button style="display: inline-block;" @click="random(4)">随机4人</el-button>
+                    <el-button style="display: inline-block;" @click="random(8)">随机8人</el-button>
+                </div>
+                <div class="char-list" v-if="randomResult.length > 0">
+                    <img v-for="item in randomResult" :src="item.icon" />
+                </div>
+            </el-tab-pane>
+            <el-tab-pane label="传说/邀约" name="mission">
+                <p>拥有传说任务</p>
+                <div class="char-list">
+                    <img v-for="item in hasChuanShuo" :src="item.icon" />
+                </div>
+                <p>拥有邀约剧情</p>
+                <div class="char-list">
+                    <img v-for="item in hasYaoYue" :src="item.icon" />
+                </div>
+                <p>两个都没有</p>
+                <div class="char-list">
+                    <img v-for="item in hasNone" :src="item.icon" />
+                </div>
+            </el-tab-pane>
+        </el-tabs>
+    </div>
+    <script>
+        const charset = [
+            {"name":"莱依拉","chuanshuo":0,"yaoyue":0,"star":"4星","gender":"女","icon":"https://patchwiki.biligame.com/images/ys/thumb/3/3f/k7qq4ohnq5a9rgxn3uuqvmhw5j7y77q.png/90px-%E8%8E%B1%E4%BE%9D%E6%8B%89%E5%A4%B4%E5%83%8F.png"},
+            {"name":"纳西妲","chuanshuo":1,"yaoyue":0,"star":"5星","gender":"女","icon":"https://patchwiki.biligame.com/images/ys/thumb/7/7e/g5x8lguvxfq0hkv211yfecjdvm0xhe7.png/90px-%E7%BA%B3%E8%A5%BF%E5%A6%B2%E5%A4%B4%E5%83%8F.png"},
+            {"name":"妮露","chuanshuo":1,"yaoyue":0,"star":"5星","gender":"女","icon":"https://patchwiki.biligame.com/images/ys/thumb/e/e1/94sj2gmd3pywnqv7ep9fdn5xrkfxaum.png/90px-%E5%A6%AE%E9%9C%B2%E5%A4%B4%E5%83%8F.png"},
+            {"name":"赛诺","chuanshuo":1,"yaoyue":0,"star":"5星","gender":"男","icon":"https://patchwiki.biligame.com/images/ys/thumb/7/72/4yr49hl7qyuzcku5hnjrls2zrswcen5.png/90px-%E8%B5%9B%E8%AF%BA%E5%A4%B4%E5%83%8F.png"},
+            {"name":"坎蒂丝","chuanshuo":0,"yaoyue":0,"star":"4星","gender":"女","icon":"https://patchwiki.biligame.com/images/ys/thumb/c/c8/lstlxgmithufj7tw1uix8wym7jrkp62.png/90px-%E5%9D%8E%E8%92%82%E4%B8%9D%E5%A4%B4%E5%83%8F.png"},
+            {"name":"多莉","chuanshuo":0,"yaoyue":0,"star":"4星","gender":"女","icon":"https://patchwiki.biligame.com/images/ys/thumb/9/98/b54n1q1ssasdm18swkg6hiwzfzdgqes.png/90px-%E5%A4%9A%E8%8E%89%E5%A4%B4%E5%83%8F.png"},
+            {"name":"提纳里","chuanshuo":1,"yaoyue":0,"star":"5星","gender":"男","icon":"https://patchwiki.biligame.com/images/ys/thumb/e/e5/9bq657i9ork1vn2uzv3fpd7p5q8dlqc.png/90px-%E6%8F%90%E7%BA%B3%E9%87%8C%E5%A4%B4%E5%83%8F.png"},
+            {"name":"柯莱","chuanshuo":0,"yaoyue":0,"star":"4星","gender":"女","icon":"https://patchwiki.biligame.com/images/ys/thumb/f/fe/s0xi3unv8y860tefgz49gi56vf0or8z.png/90px-%E6%9F%AF%E8%8E%B1%E5%A4%B4%E5%83%8F.png"},
+            {"name":"鹿野院平藏","chuanshuo":0,"yaoyue":1,"star":"4星","gender":"男","icon":"https://patchwiki.biligame.com/images/ys/thumb/7/7f/0rst5gg62xkbdkl0jyirunzqstrdn79.png/90px-%E9%B9%BF%E9%87%8E%E9%99%A2%E5%B9%B3%E8%97%8F%E5%A4%B4%E5%83%8F.png"},
+            {"name":"久岐忍","chuanshuo":0,"yaoyue":1,"star":"4星","gender":"女","icon":"https://patchwiki.biligame.com/images/ys/thumb/d/d3/36j8hdr1i5dfg0r8tfxl0q8wlc8jndf.png/90px-%E4%B9%85%E5%B2%90%E5%BF%8D%E5%A4%B4%E5%83%8F.png"},
+            {"name":"夜兰","chuanshuo":1,"yaoyue":0,"star":"5星","gender":"女","icon":"https://patchwiki.biligame.com/images/ys/thumb/4/42/e49y27vv8lhk0a9h199pgc0ramj3dk4.png/90px-%E5%A4%9C%E5%85%B0%E5%A4%B4%E5%83%8F.png"},
+            {"name":"神里绫人","chuanshuo":1,"yaoyue":0,"star":"5星","gender":"男","icon":"https://patchwiki.biligame.com/images/ys/thumb/c/c7/sdgu6bh00rod7lypt9l9c9xlxojtjhl.png/90px-%E7%A5%9E%E9%87%8C%E7%BB%AB%E4%BA%BA%E5%A4%B4%E5%83%8F.png"},
+            {"name":"八重神子","chuanshuo":1,"yaoyue":0,"star":"5星","gender":"女","icon":"https://patchwiki.biligame.com/images/ys/thumb/a/a4/0plzsmjpgzzpldn00zqijgfybgx2pac.png/90px-%E5%85%AB%E9%87%8D%E7%A5%9E%E5%AD%90%E5%A4%B4%E5%83%8F.png"},
+            {"name":"申鹤","chuanshuo":0,"yaoyue":0,"star":"5星","gender":"女","icon":"https://patchwiki.biligame.com/images/ys/thumb/6/65/793kuoybdf409lnzwevsmd8ipnel1d2.png/90px-%E7%94%B3%E9%B9%A4%E5%A4%B4%E5%83%8F.png"},
+            {"name":"云堇","chuanshuo":0,"yaoyue":1,"star":"4星","gender":"女","icon":"https://patchwiki.biligame.com/images/ys/thumb/e/e9/17iziqlqa20jj0w3yhp5bebzoo9y6bt.png/90px-%E4%BA%91%E5%A0%87%E5%A4%B4%E5%83%8F.png"},
+            {"name":"五郎","chuanshuo":0,"yaoyue":1,"star":"4星","gender":"男","icon":"https://patchwiki.biligame.com/images/ys/thumb/d/d4/8ok291j1owt70axz3l8bxlj51w9rvl5.png/90px-%E4%BA%94%E9%83%8E.png"},
+            {"name":"荒泷一斗","chuanshuo":1,"yaoyue":0,"star":"5星","gender":"男","icon":"https://patchwiki.biligame.com/images/ys/thumb/5/55/5sdwiryq6bjb3tjxxtg1e8njdmggirp.png/90px-%E8%8D%92%E6%B3%B7%E4%B8%80%E6%96%97.png"},
+            {"name":"托马","chuanshuo":0,"yaoyue":1,"star":"4星","gender":"男","icon":"https://patchwiki.biligame.com/images/ys/thumb/f/f1/4npwdwlbof3hff5s7yyoxn5afmyo6bs.png/90px-%E6%89%98%E9%A9%AC%E5%A4%B4%E5%83%8F.png"},
+            {"name":"珊瑚宫心海","chuanshuo":1,"yaoyue":0,"star":"5星","gender":"女","icon":"https://patchwiki.biligame.com/images/ys/thumb/b/bf/kyfltllg1qaoki7pwpefy7xh8022duy.png/90px-%E7%8F%8A%E7%91%9A%E5%AE%AB%E5%BF%83%E6%B5%B7%E5%A4%B4%E5%83%8F.png"},
+            {"name":"埃洛伊","chuanshuo":0,"yaoyue":0,"star":"5星","gender":"女","icon":"https://patchwiki.biligame.com/images/ys/thumb/1/12/72b7b1cm9etjeqnpg5rmfafhhj3s1nm.png/90px-%E5%9F%83%E6%B4%9B%E4%BC%8A%E5%A4%B4%E5%83%8F.png"},
+            {"name":"九条裟罗","chuanshuo":0,"yaoyue":0,"star":"4星","gender":"女","icon":"https://patchwiki.biligame.com/images/ys/thumb/6/60/bkvh6arzlluljnmsp1c36hbtqf37epy.png/90px-%E4%B9%9D%E6%9D%A1%E8%A3%9F%E7%BD%97%E5%A4%B4%E5%83%8F.png"},
+            {"name":"雷电将军","chuanshuo":2,"yaoyue":0,"star":"5星","gender":"女","icon":"https://patchwiki.biligame.com/images/ys/thumb/1/11/e9o4gu6ztf7zytnvvkeoerbevkjfwjr.png/90px-%E9%9B%B7%E7%94%B5%E5%B0%86%E5%86%9B%E5%A4%B4%E5%83%8F.png"},
+            {"name":"早柚","chuanshuo":0,"yaoyue":1,"star":"4星","gender":"女","icon":"https://patchwiki.biligame.com/images/ys/thumb/a/a2/g52x6102jce31mjisvtsormdvbvdp1s.png/90px-%E6%97%A9%E6%9F%9A%E5%A4%B4%E5%83%8F.png"},
+            {"name":"宵宫","chuanshuo":1,"yaoyue":0,"star":"5星","gender":"女","icon":"https://patchwiki.biligame.com/images/ys/thumb/b/bc/pz347ut911ktapyemd3ewiyx1dwv3te.png/90px-%E5%AE%B5%E5%AE%AB%E5%A4%B4%E5%83%8F.png"},
+            {"name":"神里绫华","chuanshuo":1,"yaoyue":0,"star":"5星","gender":"女","icon":"https://patchwiki.biligame.com/images/ys/thumb/4/4c/8h931m3f8nkkvjfq3f03c8a9h0f6x69.png/90px-%E7%A5%9E%E9%87%8C%E7%BB%AB%E5%8D%8E%E5%A4%B4%E5%83%8F.png"},
+            {"name":"枫原万叶","chuanshuo":1,"yaoyue":0,"star":"5星","gender":"男","icon":"https://patchwiki.biligame.com/images/ys/thumb/6/6a/e1n6v73p785ne6kew41q9snh45zrup2.png/90px-%E6%9E%AB%E5%8E%9F%E4%B8%87%E5%8F%B6%E5%A4%B4%E5%83%8F.png"},
+            {"name":"优菈","chuanshuo":1,"yaoyue":0,"star":"5星","gender":"女","icon":"https://patchwiki.biligame.com/images/ys/thumb/1/1b/jf6qfoaq6q48jx6lvqb88dgl4xta141.png/90px-%E4%BC%98%E8%8F%88%E5%A4%B4%E5%83%8F.png"},
+            {"name":"烟绯","chuanshuo":0,"yaoyue":0,"star":"4星","gender":"女","icon":"https://patchwiki.biligame.com/images/ys/thumb/5/59/mzwn4qo66r2bh5aod73wvmeml4tf3jw.png/90px-%E7%83%9F%E7%BB%AF%E5%A4%B4%E5%83%8F.png"},
+            {"name":"罗莎莉亚","chuanshuo":0,"yaoyue":0,"star":"4星","gender":"女","icon":"https://patchwiki.biligame.com/images/ys/thumb/d/d0/euoe9ncjixk5wlzfumjb81zf2ew7i49.png/90px-%E7%BD%97%E8%8E%8E%E8%8E%89%E4%BA%9A%E5%A4%B4%E5%83%8F.png"},
+            {"name":"胡桃","chuanshuo":1,"yaoyue":0,"star":"5星","gender":"女","icon":"https://patchwiki.biligame.com/images/ys/thumb/1/19/6x5q4v3ovlgtd5pk7xlqxjdqv1gvf0a.png/90px-%E8%83%A1%E6%A1%83%E5%A4%B4%E5%83%8F.png"},
+            {"name":"魈","chuanshuo":1,"yaoyue":0,"star":"5星","gender":"男","icon":"https://patchwiki.biligame.com/images/ys/thumb/d/da/5gzl19235uvm0mxu3w45hqnb27f0mn6.png/90px-%E9%AD%88%E5%A4%B4%E5%83%8F.png"},
+            {"name":"甘雨","chuanshuo":1,"yaoyue":0,"star":"5星","gender":"女","icon":"https://patchwiki.biligame.com/images/ys/thumb/3/3c/qr9mmt4ryhcuovbx82pazu3xv7wr19p.png/90px-%E7%94%98%E9%9B%A8%E5%A4%B4%E5%83%8F.png"},
+            {"name":"阿贝多","chuanshuo":1,"yaoyue":0,"star":"5星","gender":"男","icon":"https://patchwiki.biligame.com/images/ys/thumb/2/21/k1zod68cqa6e89r0poxm9ihfmqfmgvw.png/90px-%E9%98%BF%E8%B4%9D%E5%A4%9A%E5%A4%B4%E5%83%8F.png"},
+            {"name":"辛焱","chuanshuo":0,"yaoyue":0,"star":"4星","gender":"女","icon":"https://patchwiki.biligame.com/images/ys/thumb/a/ab/ssm5hres5t2jcnmqlmxvko87frukaaa.png/90px-%E8%BE%9B%E7%84%B1%E5%A4%B4%E5%83%8F.png"},
+            {"name":"钟离","chuanshuo":2,"yaoyue":0,"star":"5星","gender":"男","icon":"https://patchwiki.biligame.com/images/ys/thumb/7/7c/eewy674lo37jwuq9qozyszhz8vo0d8j.png/90px-%E9%92%9F%E7%A6%BB%E5%A4%B4%E5%83%8F.png"},
+            {"name":"达达利亚","chuanshuo":1,"yaoyue":0,"star":"5星","gender":"男","icon":"https://patchwiki.biligame.com/images/ys/thumb/a/af/4v48u6t4v9mfnwmabch9ojskqa1x61a.png/90px-%E8%BE%BE%E8%BE%BE%E5%88%A9%E4%BA%9A%E5%A4%B4%E5%83%8F.png"},
+            {"name":"迪奥娜","chuanshuo":0,"yaoyue":1,"star":"4星","gender":"女","icon":"https://patchwiki.biligame.com/images/ys/thumb/8/8e/ebp74g68onexgkc2xsjuornx2j6bowp.png/90px-%E8%BF%AA%E5%A5%A5%E5%A8%9C%E5%A4%B4%E5%83%8F.png"},
+            {"name":"可莉","chuanshuo":1,"yaoyue":0,"star":"5星","gender":"女","icon":"https://patchwiki.biligame.com/images/ys/thumb/b/b1/rlnhn26076peuvah42o85o2pha5m7am.png/90px-%E5%8F%AF%E8%8E%89%E5%A4%B4%E5%83%8F.png"},
+            {"name":"温迪","chuanshuo":1,"yaoyue":0,"star":"5星","gender":"男","icon":"https://patchwiki.biligame.com/images/ys/thumb/5/58/487eqx6pk6si5abhemvrdkyexskvvbg.png/90px-%E6%B8%A9%E8%BF%AA%E5%A4%B4%E5%83%8F.png"},
+            {"name":"凝光","chuanshuo":0,"yaoyue":1,"star":"4星","gender":"女","icon":"https://patchwiki.biligame.com/images/ys/thumb/6/6c/oo4earntw7se6jssxq5tjgsbyxrho79.png/90px-%E5%87%9D%E5%85%89%E5%A4%B4%E5%83%8F.png"},
+            {"name":"琴","chuanshuo":1,"yaoyue":0,"star":"5星","gender":"女","icon":"https://patchwiki.biligame.com/images/ys/thumb/1/1a/g3cl4mrxow8af265n2ajqtnuf99pkfa.png/90px-%E7%90%B4%E5%A4%B4%E5%83%8F.png"},
+            {"name":"砂糖","chuanshuo":0,"yaoyue":0,"star":"4星","gender":"女","icon":"https://patchwiki.biligame.com/images/ys/thumb/c/cc/rhbp5t3iyzpsk2dc34kv18yem0nlmzo.png/90px-%E7%A0%82%E7%B3%96%E5%A4%B4%E5%83%8F.png"},
+            {"name":"刻晴","chuanshuo":0,"yaoyue":0,"star":"5星","gender":"女","icon":"https://patchwiki.biligame.com/images/ys/thumb/6/64/goj6bb8yj190midok60n2fbkk872090.png/90px-%E5%88%BB%E6%99%B4%E5%A4%B4%E5%83%8F.png"},
+            {"name":"北斗","chuanshuo":0,"yaoyue":1,"star":"4星","gender":"女","icon":"https://patchwiki.biligame.com/images/ys/thumb/9/9a/7v8r50l2lx0fzc2tllu20e2v7y54zms.png/90px-%E5%8C%97%E6%96%97%E5%A4%B4%E5%83%8F.png"},
+            {"name":"莫娜","chuanshuo":1,"yaoyue":0,"star":"5星","gender":"女","icon":"https://patchwiki.biligame.com/images/ys/thumb/c/ce/refnobe859mskudq9i634djaniepwvt.png/90px-%E8%8E%AB%E5%A8%9C%E5%A4%B4%E5%83%8F.png"},
+            {"name":"芭芭拉","chuanshuo":0,"yaoyue":1,"star":"4星","gender":"女","icon":"https://patchwiki.biligame.com/images/ys/thumb/4/4f/nsllwey2yb8na9uab5vov22lo0zu1tf.png/90px-%E8%8A%AD%E8%8A%AD%E6%8B%89%E5%A4%B4%E5%83%8F.png"},
+            {"name":"丽莎","chuanshuo":1,"yaoyue":0,"star":"4星","gender":"女","icon":"https://patchwiki.biligame.com/images/ys/thumb/6/69/t3g00dnjqa23jssp0lkuty27e9p1n7j.png/90px-%E4%B8%BD%E8%8E%8E%E5%A4%B4%E5%83%8F.png"},
+            {"name":"行秋","chuanshuo":1,"yaoyue":0,"star":"4星","gender":"男","icon":"https://patchwiki.biligame.com/images/ys/thumb/a/a6/bz36kyv7jhk9p3sqk6g3r79a7t5aqa2.png/90px-%E8%A1%8C%E7%A7%8B%E5%A4%B4%E5%83%8F.png"},
+            {"name":"菲谢尔","chuanshuo":0,"yaoyue":0,"star":"4星","gender":"女","icon":"https://patchwiki.biligame.com/images/ys/thumb/0/06/cmlxoc9sfz7nrwmt495351zcj1qd93e.png/90px-%E8%8F%B2%E8%B0%A2%E5%B0%94%E5%A4%B4%E5%83%8F.png"},
+            {"name":"凯亚","chuanshuo":1,"yaoyue":0,"star":"4星","gender":"男","icon":"https://patchwiki.biligame.com/images/ys/thumb/e/e5/knnismq9um424psahpu5vag0ysu3jab.png/90px-%E5%87%AF%E4%BA%9A%E5%A4%B4%E5%83%8F.png"},
+            {"name":"重云","chuanshuo":0,"yaoyue":1,"star":"4星","gender":"男","icon":"https://patchwiki.biligame.com/images/ys/thumb/4/46/mpnu86qhgs99cbbt35kb09702aqp70i.png/90px-%E9%87%8D%E4%BA%91%E5%A4%B4%E5%83%8F.png"},
+            {"name":"迪卢克","chuanshuo":1,"yaoyue":0,"star":"5星","gender":"男","icon":"https://patchwiki.biligame.com/images/ys/thumb/9/94/mkpw3ljc2eoea75lhkyccu6mbsbiqnr.png/90px-%E8%BF%AA%E5%8D%A2%E5%85%8B%E5%A4%B4%E5%83%8F.png"},
+            {"name":"诺艾尔","chuanshuo":0,"yaoyue":1,"star":"4星","gender":"女","icon":"https://patchwiki.biligame.com/images/ys/thumb/1/1e/q7e7j4ybveu9vpezgvjogwpmfzz1mm2.png/90px-%E8%AF%BA%E8%89%BE%E5%B0%94%E5%A4%B4%E5%83%8F.png"},
+            {"name":"安柏","chuanshuo":1,"yaoyue":0,"star":"4星","gender":"女","icon":"https://patchwiki.biligame.com/images/ys/thumb/a/a7/c1hp9a87kti1ywjv7c5470e3dn0wxio.png/90px-%E5%AE%89%E6%9F%8F%E5%A4%B4%E5%83%8F.png"},
+            {"name":"香菱","chuanshuo":1,"yaoyue":0,"star":"4星","gender":"女","icon":"https://patchwiki.biligame.com/images/ys/thumb/c/cc/l5ae2erhaq8tn896a2yibndx5g7r5g5.png/90px-%E9%A6%99%E8%8F%B1%E5%A4%B4%E5%83%8F.png"},
+            {"name":"旅行者","chuanshuo":-1,"yaoyue":-1,"star":"5星","gender":"男/女","icon":"https://patchwiki.biligame.com/images/ys/thumb/c/cd/5for6v8dfca0j33mfutmjwmdnvi774u.png/90px-%E6%97%85%E8%A1%8C%E8%80%85%E5%A4%B4%E5%83%8F.png"},
+            {"name":"雷泽","chuanshuo":1,"yaoyue":0,"star":"4星","gender":"男","icon":"https://patchwiki.biligame.com/images/ys/thumb/4/4d/8bdo6ydvnfl23s7jx69dtp1cmoo3svm.png/90px-%E9%9B%B7%E6%B3%BD%E5%A4%B4%E5%83%8F.png"},
+            {"name":"班尼特","chuanshuo":0,"yaoyue":1,"star":"4星","gender":"男","icon":"https://patchwiki.biligame.com/images/ys/thumb/a/a0/nd8jx8novy6974e5ez7bz9la04vajw8.png/90px-%E7%8F%AD%E5%B0%BC%E7%89%B9%E5%A4%B4%E5%83%8F.png"},
+            {"name":"七七","chuanshuo":0,"yaoyue":0,"star":"5星","gender":"女","icon":"https://patchwiki.biligame.com/images/ys/thumb/8/8b/049fpv6jcr66mln0nmbbfgigfrkgrzo.png/90px-%E4%B8%83%E4%B8%83%E5%A4%B4%E5%83%8F.png"},
+        ];
+        const getRandom = n => Math.floor(Math.random() * n);
+
+        new Vue({
+            el: '#app',
+            data: { 
+                myCharSet: charset,
+                genderFilter: [],
+                starFilter: [],
+                randomResult: [],
+                tabName: 'random',
+                hasChuanShuo: [...charset].filter(x => x.chuanshuo > 0),
+                hasYaoYue: [...charset].filter(x => x.yaoyue > 0),
+                hasNone: [...charset].filter(x => x.chuanshuo == 0 && x.yaoyue == 0),
+                model: 'saved',
+                selectedCharMap: {}
+            },
+            computed:{
+                charlist(){
+                    var list = [...this.myCharSet];
+                    if(this.genderFilter.length > 0){
+                        const filter = [...this.genderFilter];
+                        filter.push("男/女");
+                        
+                        list = list.filter(x => filter.indexOf(x.gender) > -1);
+                    }
+                    if(this.starFilter.length > 0){
+                        list = list.filter(x => this.starFilter.indexOf(x.star) > -1);
+                    }
+                    return list;
+                }
+            },
+            methods:{
+                random(num){
+                    var list = [...this.charlist];
+
+                    if(list.length <= num){
+                        this.randomResult = [...list];
+                    }
+
+                    var result = [];
+
+                    while(list.length > 0 && result.length < num){
+                        var index = getRandom(list.length);
+                        result.push(...list.splice(index, 1));
+                    }
+
+                    this.randomResult = result;
+                },
+                selectChar(name){
+                    if(this.model === 'saved') return;
+
+                    if(this.selectedCharMap[name]){
+                        this.selectedCharMap[name] = !this.selectedCharMap[name];
+                    }else{
+                        this.selectedCharMap[name] = true;
+                    }
+                    this.selectedCharMap = {...this.selectedCharMap}
+                },
+                save(){
+                    const currentCharList = [...this.charlist];
+
+                    const needToDeleteMap = {};
+
+                    currentCharList.forEach(x => {
+                        if(!this.selectedCharMap[x.name]){
+                            needToDeleteMap[x.name] = true;
+                        }
+                    })
+
+                    const myCharSet = this.myCharSet.filter(x => !needToDeleteMap[x.name]);
+
+                    this.myCharSet = myCharSet;
+
+                    this.selectedCharMap = {};
+                    this.model = 'saved';
+                },
+                remove(){
+                    const myCharSet = this.myCharSet.filter(x => !this.selectedCharMap[x.name]);
+
+                    this.myCharSet = myCharSet;
+
+                    this.selectedCharMap = {};
+                    this.model = 'saved';
+                },
+                reset(){
+                    this.myCharSet = [...charset];
+                }
+            }
+        })
+    </script>
+    <style>
+
+        .char-list{
+            width: 800px;
+        }
+
+        .char-list img{
+            margin: 5px;
+            width: 60px;
+            height: 60px;
+        }
+
+        .selected{
+            background-color: aqua;
+        }
+
+        .mybtn{
+            display: inline-block;
+        }
+    </style>
+</body>
+</html>
