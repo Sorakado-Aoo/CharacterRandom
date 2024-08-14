@@ -6,11 +6,44 @@
     <script src="https://unpkg.com/vue@2/dist/vue.js"></script>
     <link rel="stylesheet" href="https://unpkg.com/element-ui/lib/theme-chalk/index.css">
     <script src="https://unpkg.com/element-ui/lib/index.js"></script>
+    <style>
+        .char-list{
+            width: 80%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+
+        .char-list img{
+            margin: 5px;
+            width: 60px;
+            height: 60px;
+        }
+
+        .selected{
+            background-color: aqua;
+        }
+
+        .mybtn{
+            display: inline-block;
+        }
+
+        .flex-column {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        p {
+            text-align: center;
+        }
+    </style>
 </head>
 <body>
     <div id="app">
-        <el-tabs v-model="tabName">
-            <el-tab-pane label="随机角色" name="random">
+        <el-tabs v-model="tabName" stretch>
+            <el-tab-pane label="随机角色" name="random" class="flex-column">
                 <el-checkbox-group v-model="genderFilter" style="margin: 10px 0;">
                     <el-checkbox-button label="男" key="男">男</el-checkbox-button>
                     <el-checkbox-button label="女" key="女">女</el-checkbox-button>
@@ -45,7 +78,7 @@
                     <img v-for="item in randomResult" :src="item.icon" />
                 </div>
             </el-tab-pane>
-            <el-tab-pane label="传说/邀约" name="mission">
+            <el-tab-pane label="传说/邀约" name="mission" class="flex-column">
                 <p>拥有传说任务</p>
                 <div class="char-list">
                     <img v-for="item in hasChuanShuo" :src="item.icon" />
@@ -239,25 +272,5 @@
             }
         })
     </script>
-    <style>
-
-        .char-list{
-            width: 800px;
-        }
-
-        .char-list img{
-            margin: 5px;
-            width: 60px;
-            height: 60px;
-        }
-
-        .selected{
-            background-color: aqua;
-        }
-
-        .mybtn{
-            display: inline-block;
-        }
-    </style>
 </body>
 </html>
